@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ErgoBot</title>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /*
+      Light mode is the default regardless of system preference.
+      Dark mode is applied only when data-theme="dark" is set
+      on the <html> element via the profile toggle.
+    */
+
+    :root,
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --border: #d4d4d4;
+      --text: #111111;
+      --muted: #777777;
+      --gap: 16px;
+      --radius: 8px;
+      --panel-body-bg: #f0f0f0;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2e2e2e;
+      --text: #f0f0f0;
+      --muted: #888888;
+      --gap: 16px;
+      --radius: 8px;
+      --panel-body-bg: #222222;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    /* Layout */
+
+    .app {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      width: 100%;
+      height: 100vh;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      min-height: 0;
+      padding: 24px 16px;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+    }
+
+    .brand {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav a {
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.8125rem;
+    }
+
+    .nav a:hover,
+    .nav a:focus-visible,
+    .nav a[aria-current="page"] {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .right-col {
+      display: grid;
+      grid-template-rows: 52px minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+      height: 100vh;
+    }
+
+    /* Header */
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+      padding: 0 var(--gap);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tabs {
+      display: flex;
+      align-self: stretch;
+    }
+
+    .tabs button {
+      padding: 0 16px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 0.8125rem;
+    }
+
+    .tabs button:hover,
+    .tabs button:focus-visible,
+    .tabs button[aria-current="page"] {
+      color: var(--text);
+    }
+
+    .tabs button[aria-current="page"] {
+      font-weight: 600;
+      border-bottom-color: var(--text);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search {
+      width: 170px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--text);
+    }
+
+    /* Main content */
+
+    .content {
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      padding: var(--gap);
+      overflow: hidden;
+    }
+
+    .tab-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    /* Dashboard */
+
+    #view-dashboard.active {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 250px;
+      grid-template-rows: minmax(0, 1fr);
+      gap: var(--gap);
+    }
+
+    .main-column {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .main-template {
+      display: none;
+    }
+
+    .main-template.active {
+      display: grid;
+    }
+
+    .main-panel {
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .panel-header,
+    .panel-footer {
+      flex-shrink: 0;
+      padding: 10px var(--gap);
+    }
+
+    .panel-header {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.8125rem;
+    }
+
+    .panel-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    /* Livestream */
+
+    .livestream-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .livestream-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel-body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+      overflow: hidden;
+      background: var(--panel-body-bg);
+    }
+
+    #camera-feed {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #camera-placeholder {
+      text-align: center;
+      color: var(--muted);
+    }
+
+    #camera-placeholder p + p {
+      margin-top: 6px;
+    }
+
+    /* History and profile templates */
+
+    .template-body {
+      min-width: 0;
+      min-height: 0;
+      padding: var(--gap);
+      overflow-y: auto;
+    }
+
+    .template-body h2 {
+      margin-bottom: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .template-placeholder {
+      margin-top: 24px;
+      padding: 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--muted);
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      padding: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .history-item strong {
+      display: block;
+      font-size: 0.8125rem;
+    }
+
+    .history-item span {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .history-score {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .profile-heading {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .profile-avatar {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      font-weight: 600;
+    }
+
+    .profile-details {
+      display: grid;
+      margin-top: 20px;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .profile-row span {
+      color: var(--muted);
+    }
+
+    .profile-row strong {
+      text-align: right;
+      font-size: 0.8125rem;
+    }
+
+    /* Dark mode toggle */
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .theme-toggle span {
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--surface);
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch input:checked + .toggle-track {
+      background: #218739;
+    }
+
+    .toggle-switch input:checked + .toggle-track::after {
+      transform: translateX(18px);
+    }
+
+    /* Buttons */
+
+    .action-button {
+      padding: 7px 12px;
+      background: var(--text);
+      border: 1px solid var(--text);
+      border-radius: 6px;
+      color: var(--surface);
+    }
+
+    .action-button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+
+    .stop-button {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: #ffffff;
+    }
+
+    .fullscreen-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 1.2rem;
+    }
+
+    .recording-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #d00000;
+      font-weight: 600;
+    }
+
+    .recording-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e00000;
+    }
+
+    /* Side cards */
+
+    .side-cards {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: var(--gap);
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .status-card,
+    .timer-card {
+      min-height: 130px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 40px;
+      padding: 10px var(--gap);
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .card-content {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      padding: var(--gap);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      align-self: flex-start;
+      max-width: 100%;
+      padding: 7px 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      color: #ffffff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: #777777;
+    }
+
+    .status-good {
+      background: #218739;
+    }
+
+    .status-warning {
+      background: #c58a00;
+    }
+
+    .status-bad {
+      background: #c62828;
+    }
+
+    .timer-value {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: clamp(1.25rem, 2.5vw, 1.8rem);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-detail,
+    .muted {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.8125rem;
+    }
+
+    .info-button {
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--muted);
+      border-radius: 50%;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .info-button:hover,
+    .info-button:focus-visible {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    /* Score band */
+
+    .score-band-track {
+      height: 4px;
+      margin-top: 10px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .score-band-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      transition: width 0.4s ease, background 0.4s ease;
+    }
+
+    /* Metric rows inside Session Grade card */
+
+    .metric-rows {
+      display: grid;
+      gap: 4px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    .metric-row span:first-child {
+      color: var(--muted);
+    }
+
+    .metric-row span:last-child {
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+
+    /* Analysis */
+
+    #view-analysis.active {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: var(--gap);
+      overflow-y: auto;
+    }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--gap);
+    }
+
+    .analysis-card,
+    .analysis-main {
+      padding: var(--gap);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .analysis-main {
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .analysis-main h2 {
+      margin-bottom: 14px;
+      font-size: 0.9rem;
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-line span:first-child {
+      color: var(--muted);
+    }
+
+    .analysis-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .analysis-section h3 {
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .breakdown-row {
+      display: grid;
+      grid-template-columns: 105px minmax(0, 1fr) 42px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 0.8rem;
+    }
+
+    .breakdown-row strong {
+      text-align: right;
+      font-size: 0.78rem;
+    }
+
+    .breakdown-track {
+      height: 8px;
+      overflow: hidden;
+      background: var(--border);
+      border-radius: 999px;
+    }
+
+    .breakdown-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.3s ease;
+    }
+
+    .breakdown-red {
+      background: #c62828;
+    }
+
+    .breakdown-orange {
+      background: #c58a00;
+    }
+
+    .breakdown-green {
+      background: #218739;
+    }
+
+    .score-chart {
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .score-chart svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 150px;
+    }
+
+    .score-chart line {
+      stroke: var(--border);
+      stroke-width: 1;
+    }
+
+    .score-chart text {
+      fill: var(--muted);
+      font-size: 11px;
+    }
+
+    .score-chart polyline {
+      fill: none;
+      stroke: var(--text);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tip-message {
+      margin: 0;
+      padding: 12px;
+      background: var(--bg);
+      border-left: 3px solid var(--border);
+      color: var(--text);
+      font-size: 0.8125rem;
+    }
+
+    .tip-message.tip-warning {
+      border-left-color: #c58a00;
+    }
+
+    .tip-message.tip-alert {
+      border-left-color: #c62828;
+    }
+
+    .analysis-footer-note {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    /* Game */
+
+    #view-game.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .game-area {
+      width: 100%;
+      max-width: 480px;
+      padding: 48px;
+      text-align: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .game-area h2 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .game-area p {
+      color: var(--muted);
+    }
+
+    /* Modal */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgb(0 0 0 / 55%);
+    }
+
+    .score-modal {
+      width: min(100%, 500px);
+      max-height: 80vh;
+      overflow: hidden;
+      background: #ffffff;
+      border: 1px solid #d4d4d4;
+      border-radius: 8px;
+      color: #111111;
+      box-shadow: 0 16px 40px rgb(0 0 0 / 25%);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #d4d4d4;
+    }
+
+    .modal-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: #555555;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .modal-close:hover,
+    .modal-close:focus-visible {
+      color: #111111;
+    }
+
+    .modal-body {
+      max-height: calc(80vh - 70px);
+      padding: 20px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .modal-body h3 {
+      margin-top: 22px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .modal-intro {
+      margin-bottom: 16px;
+    }
+
+    .score-metric {
+      display: grid;
+      gap: 2px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .score-metric strong {
+      font-size: 0.85rem;
+    }
+
+    .score-metric span {
+      color: #666666;
+      font-size: 0.8125rem;
+    }
+
+    .score-ranges {
+      display: grid;
+      gap: 8px;
+    }
+
+    .score-range {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 5px;
+      font-size: 0.8125rem;
+    }
+
+    .score-range strong {
+      min-width: 52px;
+    }
+
+    .score-range-green {
+      background: #e4f3e7;
+      color: #216b2d;
+    }
+
+    .score-range-yellow {
+      background: #fff4d6;
+      color: #866500;
+    }
+
+    .score-range-orange {
+      background: #ffeadb;
+      color: #a84d16;
+    }
+
+    .score-range-red {
+      background: #fbe3e3;
+      color: #a52222;
+    }
+
+    .modal-note {
+      margin-top: 20px;
+      color: #777777;
+      font-size: 0.75rem;
+    }
+
+    /* Fullscreen */
+
+    #livestream-panel:fullscreen {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      background: var(--bg);
+      border-radius: 0;
+    }
+
+    #livestream-panel:fullscreen #camera-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Responsive */
+
+    @media (max-width: 900px) {
+      html,
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        gap: 12px;
+        padding: 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .right-col {
+        height: auto;
+        min-height: calc(100vh - 100px);
+      }
+
+      .content {
+        height: auto;
+        overflow: visible;
+      }
+
+      .search {
+        display: none;
+      }
+
+      #view-dashboard.active {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        height: auto;
+      }
+
+      .main-panel {
+        min-height: 420px;
+      }
+
+      .side-cards {
+        grid-template-rows: none;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .analysis-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .side-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs button {
+        padding: 0 9px;
+      }
+
+      .livestream-controls {
+        width: 100%;
+      }
+
+      .action-button {
+        flex: 1;
+      }
+
+      .fullscreen-button {
+        flex: 0 0 34px;
+      }
+
+      .breakdown-row {
+        grid-template-columns: 90px minmax(0, 1fr) 38px;
+        gap: 7px;
+      }
+
+      .history-item,
+      .profile-row {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <aside class="sidebar">
+      <div class="brand">ErgoBot</div>
+
+      <nav class="nav" aria-label="Main">
+        <a href="#overview" aria-current="page" data-section="livestream">
+          Overview
+        </a>
+        <a href="#live-monitor" data-section="livestream">
+          Live monitor
+        </a>
+        <a href="#reports" data-section="analysis">
+          Reports
+        </a>
+        <a href="#history" data-section="history">
+          History
+        </a>
+      </nav>
+    </aside>
+
+    <div class="right-col">
+
+      <header class="header">
+        <nav class="tabs" aria-label="Views">
+          <button type="button" aria-current="page" data-tab="dashboard">
+            Dashboard
+          </button>
+          <button type="button" data-tab="analysis">
+            Analysis
+          </button>
+          <button type="button" data-tab="game">
+            Game Corner
+          </button>
+        </nav>
+
+        <div class="header-right">
+          <input
+            class="search"
+            type="search"
+            placeholder="Search…"
+            aria-label="Search"
+          >
+          <button
+            class="avatar"
+            id="profile-button"
+            type="button"
+            aria-label="Open profile"
+          >
+            IC
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- Dashboard -->
+        <section id="view-dashboard" class="tab-view active">
+
+          <div class="main-column">
+
+            <!-- Livestream -->
+            <section class="main-panel main-template active" id="livestream-panel">
+              <div class="panel-header livestream-header">
+                <p class="panel-title">Live posture monitor</p>
+
+                <div class="livestream-controls">
+                  <span id="recording-indicator" class="recording-indicator" hidden>
+                    <span class="recording-dot"></span>
+                    Recording
+                  </span>
+
+                  <button type="button" class="action-button" id="start-recording">
+                    Start Recording
+                  </button>
+
+                  <button type="button" class="action-button stop-button" id="stop-recording" hidden>
+                    Stop Recording
+                  </button>
+
+                  <button type="button" class="action-button" id="reconfigure-button" hidden>
+                    Reconfigure
+                  </button>
+
+                  <button
+                    type="button"
+                    class="fullscreen-button"
+                    id="fullscreen-button"
+                    aria-label="Enter fullscreen"
+                    title="Enter fullscreen"
+                  >
+                    ⛶
+                  </button>
+                </div>
+              </div>
+
+              <div class="panel-body">
+                <div id="camera-placeholder">
+                  <p>Camera is off</p>
+                  <p>Select Start Recording to begin posture tracking.</p>
+                </div>
+                <img id="camera-feed" alt="Live posture tracking feed" hidden>
+              </div>
+
+              <div class="panel-footer" id="connection-status">
+                Camera is off.
+              </div>
+            </section>
+
+            <!-- History -->
+            <section class="main-panel main-template" id="history-panel">
+              <div class="panel-header">
+                <p class="panel-title">History</p>
+              </div>
+
+              <div class="template-body">
+                <h2>Posture history</h2>
+                <p class="muted">
+                  Previous sessions and long-term posture trends will appear here.
+                </p>
+                <div class="template-placeholder" id="history-empty-state">
+                  No previous sessions yet.
+                </div>
+                <div class="history-list" id="history-list" hidden></div>
+              </div>
+
+              <div class="panel-footer">Session history</div>
+            </section>
+
+            <!-- Profile -->
+            <section class="main-panel main-template" id="profile-panel">
+              <div class="panel-header">
+                <p class="panel-title">Profile</p>
+              </div>
+
+              <div class="template-body">
+                <div class="profile-heading">
+                  <div class="profile-avatar">IC</div>
+                  <div>
+                    <h2>ErgoBot User</h2>
+                    <p class="muted">Posture tracking profile</p>
+                  </div>
+                </div>
+
+                <div class="profile-details">
+                  <div class="profile-row">
+                    <span>Calibration status</span>
+                    <strong id="profile-calibration-status">Not calibrated</strong>
+                  </div>
+                  <div class="profile-row">
+                    <span>Tracking status</span>
+                    <strong id="profile-tracking-status">Camera off</strong>
+                  </div>
+                  <div class="profile-row">
+                    <span>Current session score</span>
+                    <strong id="profile-session-score">—</strong>
+                  </div>
+                  <div class="profile-row">
+                    <span>Good posture time</span>
+                    <strong id="profile-good-posture-time">00:00:00</strong>
+                  </div>
+
+                  <!-- Dark mode toggle -->
+                  <div class="theme-toggle">
+                    <span>Dark mode</span>
+                    <label class="toggle-switch" aria-label="Toggle dark mode">
+                      <input type="checkbox" id="dark-mode-toggle">
+                      <span class="toggle-track"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel-footer">Profile overview</div>
+            </section>
+
+          </div>
+
+          <!-- Side cards -->
+          <aside class="side-cards">
+
+            <div class="card status-card">
+              <div class="card-header">
+                <span>Live Status</span>
+              </div>
+              <div class="card-content">
+                <div id="posture-status" class="status-badge status-warning">
+                  Waiting
+                </div>
+              </div>
+            </div>
+
+            <div class="card session-grade-card">
+              <div class="card-header">
+                <span>Session Grade</span>
+                <button
+                  type="button"
+                  class="info-button"
+                  id="score-info-button"
+                  aria-label="Information about session grade"
+                  title="Information about session grade"
+                >
+                  i
+                </button>
+              </div>
+              <div class="card-content">
+                <p class="timer-value" id="session-score">—</p>
+
+                <div class="score-band-track">
+                  <div class="score-band-fill" id="score-band"></div>
+                </div>
+
+                <div class="metric-rows">
+                  <div class="metric-row">
+                    <span>Head</span>
+                    <span id="metric-head">—</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Spine</span>
+                    <span id="metric-spine">—</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Shoulder</span>
+                    <span id="metric-shoulder">—</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Pelvis</span>
+                    <span id="metric-pelvis">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card timer-card">
+              <div class="card-header">
+                <span>Good Posture Timer</span>
+              </div>
+              <div class="card-content">
+                <p class="timer-value" id="session-timer">00:00:00</p>
+                <p class="card-detail">Current work session</p>
+              </div>
+            </div>
+
+          </aside>
+        </section>
+
+        <!-- Analysis -->
+        <section id="view-analysis" class="tab-view">
+
+          <div class="analysis-grid">
+            <div class="analysis-card">
+              <p class="card-label">Baseline angle</p>
+              <p class="timer-value" id="analysis-baseline">—</p>
+            </div>
+            <div class="analysis-card">
+              <p class="card-label">Current deviation</p>
+              <p class="timer-value" id="analysis-deviation">—</p>
+            </div>
+            <div class="analysis-card">
+              <p class="card-label">Configured tolerance</p>
+              <p class="timer-value" id="analysis-tolerance">—</p>
+            </div>
+          </div>
+
+          <div class="analysis-main">
+            <h2>Live analysis</h2>
+
+            <p class="muted" id="analysis-summary">
+              Waiting for posture measurements…
+            </p>
+
+            <div class="status-line">
+              <span>Posture assessment</span>
+              <strong id="analysis-posture">—</strong>
+            </div>
+            <div class="status-line">
+              <span>Face detection</span>
+              <strong id="analysis-face">—</strong>
+            </div>
+            <div class="status-line">
+              <span>Facing direction</span>
+              <strong id="analysis-facing">—</strong>
+            </div>
+            <div class="status-line">
+              <span>Calibration</span>
+              <strong id="analysis-calibration">—</strong>
+            </div>
+
+            <section class="analysis-section">
+              <h3>Today's posture breakdown</h3>
+
+              <div class="breakdown-row">
+                <span>Forward head</span>
+                <div class="breakdown-track">
+                  <div id="head-breakdown" class="breakdown-fill breakdown-red"></div>
+                </div>
+                <strong id="head-percent">0%</strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Slouching</span>
+                <div class="breakdown-track">
+                  <div id="slouch-breakdown" class="breakdown-fill breakdown-orange"></div>
+                </div>
+                <strong id="slouch-percent">0%</strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Upright</span>
+                <div class="breakdown-track">
+                  <div id="upright-breakdown" class="breakdown-fill breakdown-green"></div>
+                </div>
+                <strong id="upright-percent">0%</strong>
+              </div>
+            </section>
+
+            <section class="analysis-section">
+              <h3>Posture score over time</h3>
+
+              <div class="score-chart">
+                <svg viewBox="0 0 600 180" role="img" aria-label="Posture score over time">
+                  <line x1="40" y1="20" x2="40" y2="145"></line>
+                  <line x1="40" y1="145" x2="580" y2="145"></line>
+                  <text x="8" y="28">100</text>
+                  <text x="16" y="88">50</text>
+                  <text x="24" y="148">0</text>
+                  <polyline id="score-line" points=""></polyline>
+                </svg>
+              </div>
+
+              <p class="muted">Rolling score during the current session.</p>
+            </section>
+
+            <section class="analysis-section">
+              <h3>Ergonomic tips</h3>
+              <p id="tip-message" class="tip-message">
+                Tips will appear when a sustained posture deviation is detected.
+              </p>
+            </section>
+
+            <p class="analysis-footer-note">
+              Scored using RULA/REBA anatomical thresholds [1] with piecewise linear penalties
+              and an exponential rolling average (α = 0.05). Fatigue multiplier applied after
+              60 s of poor posture. Not a medical assessment.
+            </p>
+          </div>
+        </section>
+
+        <!-- Game Corner -->
+        <section id="view-game" class="tab-view">
+          <div class="game-area">
+            <h2>Game Corner</h2>
+            <p>Posture game coming soon.</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Session-grade modal -->
+  <div
+    id="score-modal"
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="score-modal-title"
+    hidden
+  >
+    <div class="score-modal">
+      <header class="modal-header">
+        <h2 id="score-modal-title">How we score you…</h2>
+        <button
+          type="button"
+          class="modal-close"
+          id="score-modal-close"
+          aria-label="Close score explanation"
+        >
+          ×
+        </button>
+      </header>
+
+      <div class="modal-body">
+        <p class="modal-intro">
+          Your session grade combines posture alignment with the amount of time
+          spent in an uncomfortable position.
+        </p>
+
+        <h3>What we measure</h3>
+
+        <div class="score-metric">
+          <strong>Head and neck position</strong>
+          <span>Forward head movement is measured using the craniovertebral angle.</span>
+        </div>
+        <div class="score-metric">
+          <strong>Spine position</strong>
+          <span>Forward trunk or spine flexion is compared with your calibrated baseline.</span>
+        </div>
+        <div class="score-metric">
+          <strong>Shoulder alignment</strong>
+          <span>Differences between your left and right shoulders are measured.</span>
+        </div>
+        <div class="score-metric">
+          <strong>Pelvis alignment</strong>
+          <span>Differences in hip or pelvis tilt are measured.</span>
+        </div>
+
+        <h3>How your score is calculated</h3>
+
+        <p>
+          Your score starts at 100. Points are deducted when your posture moves beyond
+          the established alignment thresholds. Larger deviations result in larger penalties [1].
+        </p>
+        <p>
+          The score also considers how long you remain in poor posture.
+          A rolling average helps prevent the score from changing abruptly [1].
+        </p>
+
+        <h3>Score ranges</h3>
+
+        <div class="score-ranges">
+          <div class="score-range score-range-green">
+            <strong>90–100</strong>
+            <span>Strong posture</span>
+          </div>
+          <div class="score-range score-range-yellow">
+            <strong>70–89</strong>
+            <span>Could be better</span>
+          </div>
+          <div class="score-range score-range-orange">
+            <strong>50–69</strong>
+            <span>Time to refocus</span>
+          </div>
+          <div class="score-range score-range-red">
+            <strong>0–49</strong>
+            <span>Consider taking a break and stretching</span>
+          </div>
+        </div>
+
+        <p class="modal-note">
+          The posture score uses calibrated anatomical deviations, time-based exposure,
+          and rolling averaging [1]. It is an ergonomic estimate, not a medical assessment.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const tabs = document.querySelectorAll('.tabs button[data-tab]');
+    const navLinks = document.querySelectorAll('.nav a[data-section]');
+
+    const views = {
+      dashboard: $('view-dashboard'),
+      analysis: $('view-analysis'),
+      game: $('view-game')
+    };
+
+    const mainTemplates = {
+      livestream: $('livestream-panel'),
+      history: $('history-panel'),
+      profile: $('profile-panel')
+    };
+
+    const connectionStatus = $('connection-status');
+    const cameraFeed = $('camera-feed');
+    const cameraPlaceholder = $('camera-placeholder');
+    const startButton = $('start-recording');
+    const stopButton = $('stop-recording');
+    const recordingIndicator = $('recording-indicator');
+    const fullscreenButton = $('fullscreen-button');
+    const livestreamPanel = $('livestream-panel');
+    const reconfigureButton = $('reconfigure-button');
+    const profileButton = $('profile-button');
+    const darkModeToggle = $('dark-mode-toggle');
+
+    let trackingActive = false;
+    let statusTimer = null;
+    let goodPostureSeconds = 0;
+    let postureTimer = null;
+    let scoreHistory = [];
+    let latestStatusData = null;
+
+    /* Dark mode */
+
+    function applyTheme(dark) {
+      document.documentElement.setAttribute(
+        'data-theme',
+        dark ? 'dark' : 'light'
+      );
+      localStorage.setItem('ergobot-theme', dark ? 'dark' : 'light');
+      darkModeToggle.checked = dark;
+    }
+
+    darkModeToggle.addEventListener('change', () => {
+      applyTheme(darkModeToggle.checked);
+    });
+
+    /* View switching */
+
+    function showTab(target) {
+      tabs.forEach(button => {
+        if (button.dataset.tab === target) {
+          button.setAttribute('aria-current', 'page');
+        } else {
+          button.removeAttribute('aria-current');
+        }
+      });
+
+      Object.entries(views).forEach(([key, element]) => {
+        if (element) {
+          element.classList.toggle('active', key === target);
+        }
+      });
+    }
+
+    function showMainTemplate(target) {
+      Object.entries(mainTemplates).forEach(([key, element]) => {
+        if (element) {
+          element.classList.toggle('active', key === target);
+        }
+      });
+    }
+
+    function clearSidebarSelection() {
+      navLinks.forEach(link => link.removeAttribute('aria-current'));
+    }
+
+    function updateProfileTemplate() {
+      const calibrationStatus = $('profile-calibration-status');
+      const trackingStatus = $('profile-tracking-status');
+      const profileScore = $('profile-session-score');
+      const profileTime = $('profile-good-posture-time');
+
+      if (calibrationStatus) {
+        calibrationStatus.textContent =
+          latestStatusData?.calibrating
+            ? 'Calibration in progress'
+            : latestStatusData
+              ? 'Calibrated'
+              : 'Not calibrated';
+      }
+
+      if (trackingStatus) {
+        trackingStatus.textContent =
+          trackingActive ? 'Tracking active' : 'Camera off';
+      }
+
+      if (profileScore) {
+        profileScore.textContent =
+          $('session-score')?.textContent || '—';
+      }
+
+      if (profileTime) {
+        profileTime.textContent =
+          $('session-timer')?.textContent || '00:00:00';
+      }
+    }
+
+    tabs.forEach(button => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.tab;
+        showTab(target);
+        if (target === 'dashboard') {
+          showMainTemplate('livestream');
+        }
+      });
+    });
+
+    navLinks.forEach(link => {
+      link.addEventListener('click', event => {
+        event.preventDefault();
+        clearSidebarSelection();
+        link.setAttribute('aria-current', 'page');
+        const target = link.dataset.section;
+        if (target === 'analysis') {
+          showTab('analysis');
+          return;
+        }
+        showTab('dashboard');
+        showMainTemplate(target === 'history' ? 'history' : 'livestream');
+      });
+    });
+
+    profileButton.addEventListener('click', () => {
+      clearSidebarSelection();
+      showTab('dashboard');
+      updateProfileTemplate();
+      showMainTemplate('profile');
+    });
+
+    /* Formatting */
+
+    function formatAngle(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return '—';
+      return `${number.toFixed(1)}°`;
+    }
+
+    function formatSignedAngle(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return '—';
+      return `${number >= 0 ? '+' : ''}${number.toFixed(1)}°`;
+    }
+
+    function formatMetricObject(metrics) {
+      if (!metrics || typeof metrics !== 'object') return '—';
+      if (Number.isFinite(Number(metrics.spine))) {
+        return formatAngle(metrics.spine);
+      }
+      return '—';
+    }
+
+    function formatDuration(totalSeconds) {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return [hours, minutes, seconds]
+        .map(value => String(value).padStart(2, '0'))
+        .join(':');
+    }
+
+    /* Score band */
+
+    function updateScoreBand(score) {
+      const band = $('score-band');
+      if (!band) return;
+      const value = Math.max(0, Math.min(100, Number(score) || 0));
+      band.style.width = `${value}%`;
+      if (value >= 90) {
+        band.style.background = '#218739';
+      } else if (value >= 70) {
+        band.style.background = '#c58a00';
+      } else if (value >= 50) {
+        band.style.background = '#c05a00';
+      } else {
+        band.style.background = '#c62828';
+      }
+    }
+
+    /* Deviation metric rows */
+
+    function updateMetricRows(deviations) {
+      if (!deviations) return;
+      $('metric-head').textContent =
+        formatSignedAngle(deviations.head);
+      $('metric-spine').textContent =
+        formatSignedAngle(deviations.spine);
+      $('metric-shoulder').textContent =
+        formatSignedAngle(deviations.shoulder);
+      $('metric-pelvis').textContent =
+        formatSignedAngle(deviations.pelvis);
+    }
+
+    /* Session timer */
+
+    function resetSessionTimer() {
+      goodPostureSeconds = 0;
+      $('session-timer').textContent = '00:00:00';
+      updateProfileTemplate();
+    }
+
+    function startPostureTimer() {
+      if (postureTimer !== null) return;
+      postureTimer = setInterval(() => {
+        goodPostureSeconds += 1;
+        $('session-timer').textContent =
+          formatDuration(goodPostureSeconds);
+        updateProfileTemplate();
+      }, 1000);
+    }
+
+    function stopPostureTimer() {
+      if (postureTimer !== null) {
+        clearInterval(postureTimer);
+        postureTimer = null;
+      }
+    }
+
+    function isGoodPosture(status) {
+      const normalized = String(status || '').toLowerCase();
+      return (
+        normalized.includes('good') ||
+        normalized.includes('normal') ||
+        normalized.includes('correct') ||
+        normalized.includes('upright')
+      );
+    }
+
+    /* Status display */
+
+    function updatePostureStatus(status) {
+      const badge = $('posture-status');
+      if (!badge) return;
+      const normalized = String(status || '').toLowerCase();
+      badge.classList.remove('status-good', 'status-warning', 'status-bad');
+      if (isGoodPosture(status)) {
+        badge.textContent = 'Good Posture';
+        badge.classList.add('status-good');
+      } else if (
+        normalized.includes('slump') ||
+        normalized.includes('slouch') ||
+        normalized.includes('neck') ||
+        normalized.includes('forward') ||
+        normalized.includes('shoulder') ||
+        normalized.includes('pelvis') ||
+        normalized.includes('poor') ||
+        normalized.includes('bad')
+      ) {
+        badge.textContent = status || 'Needs attention';
+        badge.classList.add('status-bad');
+      } else {
+        badge.textContent = status || 'Waiting';
+        badge.classList.add('status-warning');
+      }
+    }
+
+    function updatePostureTimer(status) {
+      if (isGoodPosture(status)) {
+        startPostureTimer();
+      } else {
+        stopPostureTimer();
+      }
+    }
+
+    /* Analysis */
+
+    function setBreakdownValue(name, value) {
+      const percentage = Math.max(0, Math.min(100, Number(value) || 0));
+      const fill = $(`${name}-breakdown`);
+      const label = $(`${name}-percent`);
+      if (fill) fill.style.width = `${percentage}%`;
+      if (label) label.textContent = `${percentage.toFixed(0)}%`;
+    }
+
+    function updateBreakdown(breakdown = {}) {
+      setBreakdownValue('head', breakdown.forward_head);
+      setBreakdownValue('slouch', breakdown.slouching);
+      setBreakdownValue('upright', breakdown.upright);
+    }
+
+    function updateScoreChart(score) {
+      const parsedScore = Number(score);
+      if (!Number.isFinite(parsedScore)) return;
+      const numericScore = Math.max(0, Math.min(100, parsedScore));
+      scoreHistory.push(numericScore);
+      if (scoreHistory.length > 60) scoreHistory.shift();
+      const chart = $('score-line');
+      if (!chart || scoreHistory.length === 0) return;
+      const left = 40, right = 580, bottom = 145, width = right - left, height = 125;
+      const points = scoreHistory.map((value, index) => {
+        const x = scoreHistory.length === 1
+          ? left
+          : left + (index / (scoreHistory.length - 1)) * width;
+        const y = bottom - (value / 100) * height;
+        return `${x},${y}`;
+      });
+      chart.setAttribute('points', points.join(' '));
+    }
+
+    function updateErgonomicTip(data) {
+      const tip = $('tip-message');
+      if (!tip) return;
+      const status = String(data.posture_status || '').toLowerCase();
+      const poorSeconds = Number(data.poor_posture_seconds) || 0;
+      tip.classList.remove('tip-warning', 'tip-alert');
+      if (status.includes('neck') || status.includes('head') || status.includes('forward')) {
+        tip.textContent = 'Try gently drawing your chin back and relaxing your neck.';
+        tip.classList.add('tip-warning');
+      } else if (status.includes('slump') || status.includes('slouch') || status.includes('poor')) {
+        tip.textContent = 'Straighten your spine, relax your shoulders, and take a short stretch break.';
+        tip.classList.add('tip-warning');
+      } else if (status.includes('shoulder')) {
+        tip.textContent = 'Relax both shoulders and avoid loading one side more than the other.';
+        tip.classList.add('tip-warning');
+      } else if (status.includes('pelvis')) {
+        tip.textContent = 'Place both feet on the floor and distribute your weight evenly.';
+        tip.classList.add('tip-warning');
+      } else if (poorSeconds >= 60) {
+        tip.textContent = 'You have been in an uncomfortable posture for over a minute. Consider standing up and rolling your shoulders.';
+        tip.classList.add('tip-alert');
+      } else {
+        tip.textContent = 'Your posture looks stable. Keep your shoulders relaxed and your feet supported.';
+      }
+    }
+
+    function buildDominantDeviationSummary(deviations) {
+      if (!deviations) return null;
+
+      const labels = {
+        head: 'head and neck',
+        spine: 'trunk and spine',
+        shoulder: 'shoulder alignment',
+        pelvis: 'pelvis alignment'
+      };
+
+      const entries = Object.entries(deviations)
+        .filter(([, v]) => Number.isFinite(Number(v)))
+        .sort((a, b) => Math.abs(Number(b[1])) - Math.abs(Number(a[1])));
+
+      if (!entries.length) return null;
+
+      const [key, value] = entries[0];
+      const angle = Number(value).toFixed(1);
+      const label = labels[key] || key;
+
+      return `Largest deviation detected in ${label} at ${angle}°.`;
+    }
+
+    function updateAnalysis(data) {
+      latestStatusData = data;
+
+      updatePostureStatus(data.posture_status);
+      updatePostureTimer(data.posture_status);
+      updateBreakdown(data.posture_breakdown || {});
+      updateScoreChart(data.rolling_score);
+      updateScoreBand(data.rolling_score);
+      updateErgonomicTip(data);
+      updateMetricRows(data.deviations);
+
+      const baselineText =
+        data.baseline !== null && typeof data.baseline === 'number'
+          ? formatAngle(data.baseline)
+          : formatMetricObject(data.baseline);
+
+      const deviationText =
+        data.deviation !== null && typeof data.deviation === 'number'
+          ? formatAngle(data.deviation)
+          : formatMetricObject(data.deviations);
+
+      $('analysis-baseline').textContent = baselineText;
+      $('analysis-deviation').textContent = deviationText;
+      $('analysis-tolerance').textContent =
+        data.posture_tolerance !== undefined
+          ? formatAngle(data.posture_tolerance)
+          : '—';
+
+      $('analysis-posture').textContent = data.posture_status || 'UNKNOWN';
+      $('analysis-face').textContent = data.face_status || 'UNKNOWN';
+      $('analysis-facing').textContent = data.facing_direction || 'UNKNOWN';
+      $('analysis-calibration').textContent =
+        data.calibrating ? 'In progress' : 'Complete';
+
+      const numericScore = Number(data.rolling_score);
+      if (Number.isFinite(numericScore)) {
+        $('session-score').textContent =
+          `${Math.round(numericScore)}/100`;
+      }
+
+      const summary = $('analysis-summary');
+      if (data.calibrating) {
+        summary.textContent =
+          'Sit in your usual comfortable posture while the system establishes your baseline.';
+      } else {
+        const dominantSummary =
+          buildDominantDeviationSummary(data.deviations);
+
+        summary.textContent = dominantSummary
+          || (data.posture_status
+            ? `Current assessment: ${data.posture_status}.`
+            : 'The baseline is ready, but a valid posture measurement is not currently available.');
+      }
+
+      updateProfileTemplate();
+    }
+
+    /* Recording UI */
+
+    function setRecordingUI(active) {
+      trackingActive = active;
+      startButton.hidden = active;
+      stopButton.hidden = !active;
+      recordingIndicator.hidden = !active;
+      cameraFeed.hidden = !active;
+      cameraPlaceholder.hidden = active;
+      reconfigureButton.hidden = !active;
+      if (!active) {
+        cameraFeed.removeAttribute('src');
+        stopPostureTimer();
+      }
+      updateProfileTemplate();
+    }
+
+    async function refreshStatus() {
+      if (!trackingActive) return;
+      try {
+        const response = await fetch('/status', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Status request failed.');
+        const data = await response.json();
+        if (data.tracking_active === false) {
+          setRecordingUI(false);
+          if (statusTimer !== null) {
+            clearInterval(statusTimer);
+            statusTimer = null;
+          }
+          connectionStatus.textContent = 'Tracking stopped.';
+          return;
+        }
+        updateAnalysis(data);
+        connectionStatus.textContent = 'Live tracking connected.';
+      } catch (error) {
+        connectionStatus.textContent =
+          'Unable to retrieve tracking data. Check the Flask terminal.';
+      }
+    }
+
+    async function startTracking() {
+      resetSessionTimer();
+      stopPostureTimer();
+      scoreHistory = [];
+      startButton.disabled = true;
+      connectionStatus.textContent = 'Starting camera…';
+      try {
+        const response = await fetch('/start_tracking', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Could not start tracking.');
+        }
+        setRecordingUI(true);
+        cameraFeed.src = `/video_feed?t=${Date.now()}`;
+        connectionStatus.textContent = 'Camera starting. Waiting for measurements…';
+        if (statusTimer !== null) clearInterval(statusTimer);
+        await refreshStatus();
+        statusTimer = setInterval(refreshStatus, 1000);
+      } catch (error) {
+        setRecordingUI(false);
+        connectionStatus.textContent = error.message;
+      } finally {
+        startButton.disabled = false;
+      }
+    }
+
+    async function stopTracking() {
+      stopButton.disabled = true;
+      try {
+        const response = await fetch('/stop_tracking', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Could not stop tracking.');
+        }
+        if (statusTimer !== null) {
+          clearInterval(statusTimer);
+          statusTimer = null;
+        }
+        setRecordingUI(false);
+        connectionStatus.textContent = 'Camera stopped.';
+      } catch (error) {
+        connectionStatus.textContent = error.message;
+      } finally {
+        stopButton.disabled = false;
+      }
+    }
+
+    async function reconfigure() {
+      reconfigureButton.disabled = true;
+      connectionStatus.textContent =
+        'Reconfiguring. Sit in your usual comfortable posture…';
+      try {
+        const response = await fetch('/recalibrate', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Could not reconfigure.');
+        }
+        connectionStatus.textContent = 'Reconfiguration started.';
+        await refreshStatus();
+      } catch (error) {
+        connectionStatus.textContent = error.message;
+      } finally {
+        reconfigureButton.disabled = false;
+      }
+    }
+
+    startButton.addEventListener('click', startTracking);
+    stopButton.addEventListener('click', stopTracking);
+    reconfigureButton.addEventListener('click', reconfigure);
+
+    /* Fullscreen */
+
+    fullscreenButton.addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement === livestreamPanel) {
+          await document.exitFullscreen();
+        } else {
+          await livestreamPanel.requestFullscreen();
+        }
+      } catch (error) {
+        connectionStatus.textContent =
+          'Fullscreen is unavailable in this browser.';
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFullscreen = document.fullscreenElement === livestreamPanel;
+      fullscreenButton.setAttribute(
+        'aria-label',
+        isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
+      );
+      fullscreenButton.title =
+        isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen';
+    });
+
+    /* Modal */
+
+    const scoreInfoButton = $('score-info-button');
+    const scoreModal = $('score-modal');
+    const scoreModalClose = $('score-modal-close');
+
+    function openScoreModal() {
+      scoreModal.hidden = false;
+      scoreModalClose.focus();
+    }
+
+    function closeScoreModal() {
+      scoreModal.hidden = true;
+      scoreInfoButton.focus();
+    }
+
+    scoreInfoButton.addEventListener('click', openScoreModal);
+    scoreModalClose.addEventListener('click', closeScoreModal);
+    scoreModal.addEventListener('click', event => {
+      if (event.target === scoreModal) closeScoreModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !scoreModal.hidden) closeScoreModal();
+    });
+
+    /* Initial state */
+
+    const savedTheme = localStorage.getItem('ergobot-theme');
+    applyTheme(savedTheme === 'dark');
+
+    showTab('dashboard');
+    showMainTemplate('livestream');
+    setRecordingUI(false);
+    resetSessionTimer();
+    connectionStatus.textContent = 'Camera is off.';
+  </script>
+</body>
+</html>
